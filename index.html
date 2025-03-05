@@ -212,7 +212,7 @@
     </style>
 </head>
 <body>
-    <h1>Gerador de Flashcards para Anki com Gemini</h1>
+    <h1>Gerador de Flashcards</h1>
     
     <div class="tab-buttons">
         <button id="ai-tab-button" class="tab-button active" onclick="switchTab('ai')">Criar com IA</button>
@@ -635,6 +635,13 @@ Detalhes:
 - Matéria: ${subject}
 ${subtopic ? `- Subtópico: ${subtopic}` : ''}
 ${instructions ? `Instruções adicionais: ${instructions}` : ''}
+
+Instruções Importantes:
+- Sempre use conteúdo atualizado de acordo com o ano corrente
+- Para temas específicos como SFN, legislação ou sistemas específicos, considere o contexto brasileiro
+- Baseie os cards em questões relevantes e recorrentes em provas de concursos
+- Foque em assuntos com maior incidência em exames recentes
+- Garanta que as informações sejam precisas e atualizadas
 
 Cada flashcard deve ser totalmente independente, com informações únicas.`;
 
