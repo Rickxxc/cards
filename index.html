@@ -1,0 +1,684 @@
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerador de Flashcards para Anki com Gemini</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        input, textarea {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 15px;
+            width: 100%;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #generatedCards {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .card-container {
+            width: 300px;
+            height: 200px;
+            perspective: 1000px;
+            margin-bottom: 30px;
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .card-front {
+            background-color: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+        }
+        .card-back {
+            background-color: #e8f8e8;
+            border-left: 4px solid #4CAF50;
+            transform: rotateY(180deg);
+            font-size: 0.9em;
+        }
+        .card-action-buttons {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .card-action-buttons button {
+            width: auto;
+            padding: 5px 10px;
+            margin: 0;
+        }
+        .download-button {
+            background-color: #ff9800;
+        }
+        .download-button:hover {
+            background-color: #e68a00;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            color: #2e7d32;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .creation-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .creation-options button {
+            flex: 1;
+        }
+        #manualCardForm {
+            display: none;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .download-all-button {
+            background-color: #9c27b0;
+            margin-top: 20px;
+        }
+        .download-all-button:hover {
+            background-color: #7b1fa2;
+        }
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            flex: 1;
+            background-color: #ddd;
+            color: #333;
+            font-weight: bold;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gerador de Flashcards para Anki com Gemini</h1>
+    
+    <div class="tab-buttons">
+        <button id="ai-tab-button" class="tab-button active" onclick="switchTab('ai')">Criar com IA</button>
+        <button id="manual-tab-button" class="tab-button" onclick="switchTab('manual')">Criar Manualmente</button>
+    </div>
+    
+    <div id="ai-tab-content" class="tab-content active">
+        <div>
+            <label for="subject">Matéria:</label>
+            <input type="text" id="subject" placeholder="Digite a matéria (ex: Matemática, História)">
+        </div>
+
+        <div>
+            <label for="theme">Tema:</label>
+            <input type="text" id="theme" placeholder="Digite o tema específico">
+        </div>
+
+        <div>
+            <label for="subtopic">Subtópico (Opcional):</label>
+            <input type="text" id="subtopic" placeholder="Digite um subtópico específico">
+        </div>
+
+        <div>
+            <label for="instructions">Instruções Adicionais (Opcional):</label>
+            <textarea id="instructions" placeholder="Instruções especiais para geração dos cards"></textarea>
+        </div>
+
+        <button onclick="generateCards()">Gerar Flashcards</button>
+    </div>
+    
+    <div id="manual-tab-content" class="tab-content">
+        <div id="manualCardForm">
+            <h3>Criar Flashcard Manualmente</h3>
+            <div>
+                <label for="cardFront">Frente do Card (Pergunta):</label>
+                <textarea id="cardFront" rows="3" placeholder="Digite a pergunta aqui"></textarea>
+            </div>
+            <div>
+                <label for="cardBack">Verso do Card (Resposta):</label>
+                <textarea id="cardBack" rows="5" placeholder="Digite a resposta aqui"></textarea>
+            </div>
+            <button onclick="addManualCard()">Adicionar Card</button>
+        </div>
+    </div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Gerando flashcards...</p>
+    </div>
+
+    <div id="generatedCards"></div>
+
+    <script>
+        // Chave da API Gemini fixa no código - Substitua com sua chave real
+        const API_KEY = "AIzaSyBX_vKVRLmKUn1MLJmlD0HmqMAXLmQ3kTU";
+        let cardsData = [];
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.getElementById(`${tabName}-tab-button`).classList.add('active');
+            document.getElementById(`${tabName}-tab-content`).classList.add('active');
+            
+            if (tabName === 'manual') {
+                document.getElementById('manualCardForm').style.display = 'block';
+            }
+        }
+
+        function flipCard(cardElement) {
+            cardElement.classList.toggle('flipped');
+        }
+
+        function downloadCard(index) {
+            const card = cardsData[index];
+            const subject = document.getElementById('subject').value.trim() || 'Flashcard';
+            const theme = document.getElementById('theme').value.trim() || 'Tema';
+            
+            const htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Flashcard: ${subject} - ${theme}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .card-container {
+            width: 400px;
+            height: 300px;
+            perspective: 1000px;
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .card-front {
+            background-color: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+        }
+        .card-back {
+            background-color: #e8f8e8;
+            border-left: 4px solid #4CAF50;
+            transform: rotateY(180deg);
+            font-size: 1.1em;
+        }
+        h1 {
+            color: #2e7d32;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .instructions {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>${subject} - ${theme}</h1>
+        <div class="card-container">
+            <div class="card" onclick="this.classList.toggle('flipped')">
+                <div class="card-face card-front">
+                    ${card.front}
+                </div>
+                <div class="card-face card-back">
+                    ${card.back}
+                </div>
+            </div>
+        </div>
+        <p class="instructions">Clique no card para virá-lo</p>
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `flashcard_${subject}_${index + 1}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadAllCards() {
+            if (cardsData.length === 0) {
+                alert('Nenhum card para baixar!');
+                return;
+            }
+            
+            const subject = document.getElementById('subject').value.trim() || 'Flashcards';
+            const theme = document.getElementById('theme').value.trim() || 'Tema';
+            
+            let cardsHtml = '';
+            cardsData.forEach((card, index) => {
+                cardsHtml += `
+        <div class="card-container">
+            <div class="card" onclick="this.classList.toggle('flipped')">
+                <div class="card-face card-front">
+                    ${card.front}
+                </div>
+                <div class="card-face card-back">
+                    ${card.back}
+                </div>
+            </div>
+            <p class="card-number">Card ${index + 1}</p>
+        </div>`;
+            });
+            
+            const htmlContent = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Flashcards: ${subject} - ${theme}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #2e7d32;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .card-container {
+            width: 300px;
+            height: 200px;
+            perspective: 1000px;
+            margin-bottom: 30px;
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .card-front {
+            background-color: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+        }
+        .card-back {
+            background-color: #e8f8e8;
+            border-left: 4px solid #4CAF50;
+            transform: rotateY(180deg);
+            font-size: 0.9em;
+        }
+        .card-number {
+            text-align: center;
+            font-weight: bold;
+            margin-top: 5px;
+            color: #555;
+        }
+        .instructions {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Flashcards: ${subject} - ${theme}</h1>
+    <p class="instructions">Clique em um card para virá-lo e ver a resposta</p>
+    <div class="cards-container">
+        ${cardsHtml}
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `flashcards_${subject}_${theme}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function addManualCard() {
+            const front = document.getElementById('cardFront').value.trim();
+            const back = document.getElementById('cardBack').value.trim();
+            
+            if (!front || !back) {
+                alert('Por favor, preencha a frente e o verso do card');
+                return;
+            }
+            
+            cardsData.push({ front, back });
+            renderCards();
+            
+            document.getElementById('cardFront').value = '';
+            document.getElementById('cardBack').value = '';
+        }
+
+        function renderCards() {
+            const generatedCardsDiv = document.getElementById('generatedCards');
+            generatedCardsDiv.innerHTML = '';
+            
+            if (cardsData.length > 0) {
+                cardsData.forEach((card, index) => {
+                    const cardContainer = document.createElement('div');
+                    cardContainer.className = 'card-container';
+                    cardContainer.innerHTML = `
+                        <div class="card" onclick="flipCard(this)">
+                            <div class="card-face card-front">
+                                ${card.front}
+                            </div>
+                            <div class="card-face card-back">
+                                ${card.back}
+                            </div>
+                        </div>
+                        <div class="card-action-buttons">
+                            <button class="download-button" onclick="downloadCard(${index})">Baixar Card</button>
+                        </div>
+                    `;
+                    generatedCardsDiv.appendChild(cardContainer);
+                });
+                
+                const downloadAllButton = document.createElement('button');
+                downloadAllButton.className = 'download-all-button';
+                downloadAllButton.textContent = 'Baixar Todos os Cards';
+                downloadAllButton.onclick = downloadAllCards;
+                generatedCardsDiv.appendChild(downloadAllButton);
+            }
+        }
+
+        async function generateCards() {
+            const subject = document.getElementById('subject').value.trim();
+            const theme = document.getElementById('theme').value.trim();
+            const subtopic = document.getElementById('subtopic').value.trim();
+            const instructions = document.getElementById('instructions').value.trim();
+            const loadingDiv = document.getElementById('loading');
+            
+            if (!subject || !theme) {
+                alert('Por favor, preencha Matéria e Tema');
+                return;
+            }
+
+            loadingDiv.style.display = 'block';
+
+            let prompt = `Gere 5 flashcards distintos no seguinte formato EXATO:
+
+Flashcard 1:
+Frente: [Pergunta clara e direta]
+Verso: [Resposta detalhada]
+
+Flashcard 2:
+Frente: [Pergunta clara e direta]
+Verso: [Resposta detalhada]
+
+... e assim por diante para os 5 flashcards.
+
+Detalhes:
+- Tema: ${theme} 
+- Matéria: ${subject}
+${subtopic ? `- Subtópico: ${subtopic}` : ''}
+${instructions ? `Instruções adicionais: ${instructions}` : ''}
+
+Cada flashcard deve ser totalmente independente, com informações únicas.`;
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${API_KEY}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Erro na API: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                const responseText = data.candidates[0].content.parts[0].text;
+                
+                const flashcards = processFlashcards(responseText);
+                
+                loadingDiv.style.display = 'none';
+                
+                if (flashcards && flashcards.length > 0) {
+                    cardsData = flashcards;
+                    renderCards();
+                } else {
+                    alert('Nenhum card foi gerado. Tente ajustar suas instruções e tente novamente.');
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                alert('Erro ao gerar cards: ' + error.message);
+                console.error('Erro completo:', error);
+            }
+        }
+
+        function processFlashcards(text) {
+            const flashcards = [];
+            
+            // Improved regex pattern to match each flashcard
+            const flashcardRegex = /(?:Flashcard|Card|Questão|Pergunta)\s*(\d+)[:.]\s*(?:\n|.)*?Frente[:.]\s*(.*?)(?:\n+(?:Verso|Resposta)[:.]\s*)([\s\S]*?)(?=(?:\n+Flashcard|Card|Questão|Pergunta)\s*\d+[:.]\s*|$)/gi;
+            
+            let match;
+            while ((match = flashcardRegex.exec(text)) !== null) {
+                const front = match[2].trim();
+                const back = match[3].trim();
+                
+                if (front && back && front.length > 5 && back.length > 5) {
+                    flashcards.push({ front, back });
+                }
+            }
+            
+            // Fallback method if the main regex didn't find any valid flashcards
+            if (flashcards.length === 0) {
+                // Split by numbered flashcard indicators
+                const parts = text.split(/\n\s*(?:Flashcard|Card|Questão|Pergunta)\s*\d+[:.]\s*/i)
+                    .filter(part => part.trim().length > 0);
+                
+                parts.forEach(part => {
+                    const frontMatch = part.match(/(?:Frente|Pergunta)[:.]\s*(.*?)(?=\n+(?:Verso|Resposta)[:.]\s*|$)/is);
+                    const backMatch = part.match(/(?:Verso|Resposta)[:.]\s*([\s\S]*?)$/is);
+                    
+                    if (frontMatch && backMatch) {
+                        const front = frontMatch[1].trim();
+                        const back = backMatch[1].trim();
+                        
+                        if (front && back && front.length > 5 && back.length > 5) {
+                            flashcards.push({ front, back });
+                        }
+                    }
+                });
+            }
+            
+            // Second fallback for very inconsistently formatted responses
+            if (flashcards.length === 0) {
+                const lines = text.split('\n').filter(line => line.trim());
+                let currentFront = null;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    if (line.match(/^(?:Frente|Pergunta)[:.]/i)) {
+                        currentFront = line.replace(/^(?:Frente|Pergunta)[:.]\s*/i, '').trim();
+                    } else if (line.match(/^(?:Verso|Resposta)[:.]/i) && currentFront) {
+                        const back = line.replace(/^(?:Verso|Resposta)[:.]\s*/i, '').trim();
+                        
+                        if (currentFront && back && currentFront.length > 5 && back.length > 5) {
+                            flashcards.push({ front: currentFront, back });
+                            currentFront = null;
+                        }
+                    }
+                }
+            }
+
+            return flashcards.length > 0 ? flashcards : null;
+        }
+
+        window.generateCards = generateCards;
+        window.flipCard = flipCard;
+        window.downloadCard = downloadCard;
+        window.downloadAllCards = downloadAllCards;
+        window.addManualCard = addManualCard;
+        window.switchTab = switchTab;
+    </script>
+</body>
+</html>
