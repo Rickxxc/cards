@@ -209,6 +209,55 @@
         .tab-content.active {
             display: block;
         }
+        .education-level-selector {
+            margin-bottom: 20px;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .education-level-selector h3 {
+            margin-top: 0;
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .education-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .education-option-btn {
+            padding: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #333;
+            font-weight: normal;
+        }
+        
+        .education-option-btn.selected {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #2e7d32;
+        }
+        
+        @media (max-width: 768px) {
+            .education-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .education-options {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -220,6 +269,18 @@
     </div>
     
     <div id="ai-tab-content" class="tab-content active">
+        <div class="education-level-selector">
+            <h3>Escolha o nível educacional:</h3>
+            <div class="education-options">
+                <button class="education-option-btn" data-level="concurso-fundamental">Concurso Público - Fundamental</button>
+                <button class="education-option-btn" data-level="concurso-medio">Concurso Público - Médio</button>
+                <button class="education-option-btn" data-level="concurso-superior">Concurso Público - Superior</button>
+                <button class="education-option-btn" data-level="escola-fundamental">Escola - Fundamental</button>
+                <button class="education-option-btn" data-level="escola-medio">Escola - Médio</button>
+                <button class="education-option-btn" data-level="academico">Acadêmico - Superior</button>
+            </div>
+        </div>
+
         <div>
             <label for="subject">Matéria:</label>
             <input type="text" id="subject" placeholder="Digite a matéria (ex: Matemática, História)">
@@ -269,6 +330,25 @@
         // Chave da API Gemini fixa no código - Substitua com sua chave real
         const API_KEY = "AIzaSyBX_vKVRLmKUn1MLJmlD0HmqMAXLmQ3kTU";
         let cardsData = [];
+        let selectedEducationLevel = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listeners to education level buttons
+            document.querySelectorAll('.education-option-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove selected class from all buttons
+                    document.querySelectorAll('.education-option-btn').forEach(btn => {
+                        btn.classList.remove('selected');
+                    });
+                    
+                    // Add selected class to clicked button
+                    this.classList.add('selected');
+                    
+                    // Store selected education level
+                    selectedEducationLevel = this.getAttribute('data-level');
+                });
+            });
+        });
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-button').forEach(button => {
@@ -615,10 +695,16 @@
                 alert('Por favor, preencha Matéria e Tema');
                 return;
             }
+            
+            if (!selectedEducationLevel) {
+                alert('Por favor, selecione um nível educacional');
+                return;
+            }
 
             loadingDiv.style.display = 'block';
 
-            let prompt = `Gere 8 flashcards distintos, visando revisão e estudo para Concursos Públicos ou provas (Dê máxima atenção para sempre usar conteúdo atualizado, com veracidade atestada e livre de erros), no seguinte formato EXATO:
+            // Base prompt with common instructions
+            let basePrompt = `Gere 8 flashcards distintos, no seguinte formato EXATO:
 
 Flashcard 1:
 Frente: [Pergunta clara e direta]
@@ -628,22 +714,96 @@ Flashcard 2:
 Frente: [Pergunta clara e direta]
 Verso: [Resposta Concisa, não muito longa, mas completa]
 
-... e assim por diante para os 5 flashcards.
+... e assim por diante para os 8 flashcards.
 
 Detalhes:
 - Tema: ${theme} 
 - Matéria: ${subject}
 ${subtopic ? `- Subtópico: ${subtopic}` : ''}
-${instructions ? `Instruções adicionais: ${instructions}` : ''}
+${instructions ? `Instruções adicionais: ${instructions}` : ''}`;
 
+            // Customize prompt based on education level
+            let educationLevelInstructions = '';
+            
+            switch(selectedEducationLevel) {
+                case 'concurso-fundamental':
+                    educationLevelInstructions = `
+Instruções para Concurso Público - Nível Fundamental:
+- Adapte o conteúdo para questões de concursos públicos de nível fundamental
+- Foque em conceitos básicos, definições essenciais e aplicações simples
+- Use linguagem acessível e exemplos claros do cotidiano
+- Ênfase em questões de conhecimentos gerais e atualidades
+- Limite a complexidade das perguntas e respostas`;
+                    break;
+                    
+                case 'concurso-medio':
+                    educationLevelInstructions = `
+Instruções para Concurso Público - Nível Médio:
+- Adapte o conteúdo para questões de concursos públicos de nível médio
+- Equilibre entre conceitos básicos e aplicações práticas
+- Foque em temas frequentes em provas de concursos de nível médio
+- Inclua questões sobre legislação básica relacionada à área
+- Aborde conhecimentos técnicos específicos com moderada complexidade`;
+                    break;
+                    
+                case 'concurso-superior':
+                    educationLevelInstructions = `
+Instruções para Concurso Público - Nível Superior:
+- Adapte o conteúdo para concursos públicos de nível superior
+- Aborde conceitos avançados e aplicações complexas
+- Inclua referências à legislação específica e jurisprudência relevante
+- Foque em temas de alta incidência em concursos de carreiras específicas
+- Explore questões que exigem análise crítica e conhecimento aprofundado`;
+                    break;
+                    
+                case 'escola-fundamental':
+                    educationLevelInstructions = `
+Instruções para Escola - Nível Fundamental:
+- Adapte o conteúdo para alunos do ensino fundamental
+- Use linguagem simples e didática, adequada para a faixa etária
+- Foque em conceitos básicos que construam uma base sólida
+- Inclua exemplos concretos e relacionados ao cotidiano dos estudantes
+- Evite complexidade desnecessária, priorizando clareza e fixação`;
+                    break;
+                    
+                case 'escola-medio':
+                    educationLevelInstructions = `
+Instruções para Escola - Nível Médio:
+- Adapte o conteúdo para alunos do ensino médio
+- Aborde conceitos que são cobrados em vestibulares e ENEM
+- Equilibre a teoria com aplicações práticas e exemplos contextualizados
+- Inclua referências a temas interdisciplinares quando relevante
+- Prepare o aluno para provas de acesso ao ensino superior`;
+                    break;
+                    
+                case 'academico':
+                    educationLevelInstructions = `
+Instruções para Acadêmico - Nível Superior:
+- Adapte o conteúdo para estudantes universitários e pós-graduandos
+- Aborde conceitos avançados, teorias e estudos recentes
+- Inclua terminologia técnica e científica própria da área
+- Faça referências a autores, pesquisas e publicações relevantes
+- Explore abordagens críticas e questões que estimulem análise aprofundada`;
+                    break;
+            }
+            
+            // Common instructions for all levels
+            const commonInstructions = `
 Instruções Importantes:
 - Sempre use conteúdo atualizado de acordo com o ano corrente
 - Para temas específicos como SFN, legislação ou sistemas específicos, considere o contexto brasileiro
-- Baseie os cards em questões relevantes e recorrentes em provas de concursos
-- Foque em assuntos com maior incidência em exames recentes
+- Baseie os cards em questões relevantes conforme o nível selecionado
+- Foque em assuntos com maior incidência em exames ou contextos de aprendizagem apropriados
 - Garanta que as informações sejam precisas e atualizadas
+- IMPORTANTE: Mantenha as perguntas (frente) OBJETIVAS e DIRETAS, evitando textos excessivamente longos
+- IMPORTANTE: As respostas (verso) devem ser CLARAS e CONCISAS, contendo apenas o essencial para o entendimento
+- Evite responder com parágrafos extensos ou informações supérfluas
+- Priorize a qualidade da informação sobre a quantidade
 
 Cada flashcard deve ser totalmente independente, com informações únicas.`;
+
+            // Combine all parts of the prompt
+            let prompt = basePrompt + educationLevelInstructions + commonInstructions;
 
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${API_KEY}`;
