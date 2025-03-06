@@ -178,7 +178,6 @@
         }
         .download-all-button {
             background-color: #9c27b0;
-            margin-top: 20px;
         }
         .download-all-button:hover {
             background-color: #7b1fa2;
@@ -505,7 +504,11 @@
                 <p>Arraste e solte arquivos ou pastas aqui</p>
                 <p>ou</p>
                 <input type="file" id="fileInput" webkitdirectory directory multiple style="display: none;">
-                <button onclick="document.getElementById('fileInput').click()">Selecionar Pasta</button>
+                <input type="file" id="singleFileInput" multiple style="display: none;">
+                <div class="file-select-buttons">
+                    <button onclick="document.getElementById('fileInput').click()">Selecionar Pasta</button>
+                    <button onclick="document.getElementById('singleFileInput').click()">Selecionar Arquivos</button>
+                </div>
             </div>
             
             <div class="file-path" id="filePath">
@@ -599,6 +602,7 @@
         // File explorer setup
         const dropzone = document.getElementById('fileDropzone');
         const fileInput = document.getElementById('fileInput');
+        const singleFileInput = document.getElementById('singleFileInput');
         
         dropzone.addEventListener('dragover', function(e) {
             e.preventDefault();
@@ -627,6 +631,41 @@
             handleFileInputSelection(this.files);
         });
 
+        singleFileInput.addEventListener('change', function(e) {
+            handleSingleFileSelection(this.files);
+        });
+
+        function handleSingleFileSelection(files) {
+            if (!files || files.length === 0) return;
+            
+            const validFiles = Array.from(files).filter(file => file.name.endsWith('.html'));
+            
+            if (validFiles.length === 0) {
+                alert('Por favor, selecione arquivos HTML válidos para visualização de flashcards.');
+                return;
+            }
+            
+            // For multiple individual files, create a simple flat file structure
+            fileSystem = { 
+                type: 'directory', 
+                name: 'root', 
+                children: {},
+                path: '' 
+            };
+            
+            validFiles.forEach(file => {
+                fileSystem.children[file.name] = { 
+                    type: 'file', 
+                    name: file.name, 
+                    file: file,
+                    path: file.name
+                };
+            });
+            
+            currentPath = [];
+            updateFileList();
+        }
+        
         function handleFileInputSelection(files) {
             if (!files || files.length === 0) return;
             
@@ -774,7 +813,10 @@
             
             // Back button logic
             backButton.disabled = currentPath.length === 0;
-            fullscreenButton.disabled = !(currentNode && currentNode.type === 'directory');
+            
+            // Enable fullscreen button for both directories and individual HTML files
+            fullscreenButton.disabled = !(currentNode && (currentNode.type === 'directory' || 
+                                                      (currentNode.type === 'file' && currentNode.name.endsWith('.html'))));
             
             // Check if directory is empty
             if (!currentNode.children || Object.keys(currentNode.children).length === 0) {
@@ -890,8 +932,14 @@
 
         function downloadCard(index) {
             const card = cardsData[index];
-            const subject = document.getElementById('subject').value.trim() || 'Flashcard';
-            const theme = document.getElementById('theme').value.trim() || 'Tema';
+            const defaultSubject = document.getElementById('subject').value.trim() || 'Flashcard';
+            const defaultTheme = document.getElementById('theme').value.trim() || 'Tema';
+            
+            const customSubject = prompt('Nome da matéria/assunto para o arquivo:', defaultSubject);
+            if (customSubject === null) return; // User cancelled
+            
+            const customTheme = prompt('Nome do tema para o arquivo:', defaultTheme);
+            if (customTheme === null) return; // User cancelled
             
             const htmlContent = `
 <!DOCTYPE html>
@@ -899,7 +947,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flashcard: ${subject} - ${theme}</title>
+    <title>Flashcard: ${customSubject} - ${customTheme}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -983,7 +1031,7 @@
 </head>
 <body>
     <div>
-        <h1>${subject} - ${theme}</h1>
+        <h1>${customSubject} - ${customTheme}</h1>
         <div class="card-container">
             <div class="card" onclick="this.classList.toggle('flipped')">
                 <div class="card-face card-front">
@@ -1003,7 +1051,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `flashcard_${subject}_${index + 1}.html`;
+            a.download = `flashcard_${customSubject}_${index + 1}.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1016,23 +1064,30 @@
                 return;
             }
             
-            const subject = document.getElementById('subject').value.trim() || 'Flashcards';
-            const theme = document.getElementById('theme').value.trim() || 'Tema';
+            // Prompt for custom filename
+            const defaultSubject = document.getElementById('subject').value.trim() || 'Flashcards';
+            const defaultTheme = document.getElementById('theme').value.trim() || 'Tema';
+            
+            const customSubject = prompt('Nome da matéria/assunto para o arquivo:', defaultSubject);
+            if (customSubject === null) return; // User cancelled
+            
+            const customTheme = prompt('Nome do tema para o arquivo:', defaultTheme);
+            if (customTheme === null) return; // User cancelled
             
             let cardsHtml = '';
             cardsData.forEach((card, index) => {
                 cardsHtml += `
-        <div class="card-container">
-            <div class="card" onclick="this.classList.toggle('flipped')">
-                <div class="card-face card-front">
-                    ${card.front}
-                </div>
-                <div class="card-face card-back">
-                    ${card.back}
-                </div>
+    <div class="card-container">
+        <div class="card" onclick="this.classList.toggle('flipped')">
+            <div class="card-face card-front">
+                ${card.front}
             </div>
-            <p class="card-number">Card ${index + 1}</p>
-        </div>`;
+            <div class="card-face card-back">
+                ${card.back}
+            </div>
+        </div>
+        <p class="card-number">Card ${index + 1}</p>
+    </div>`;
             });
             
             const htmlContent = `
@@ -1041,7 +1096,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flashcards: ${subject} - ${theme}</title>
+    <title>Flashcards: ${customSubject} - ${customTheme}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -1135,7 +1190,7 @@
     </style>
 </head>
 <body>
-    <h1>Flashcards: ${subject} - ${theme}</h1>
+    <h1>Flashcards: ${customSubject} - ${customTheme}</h1>
     <p class="instructions">Clique em um card para virá-lo e ver a resposta</p>
     <div class="cards-container">
         ${cardsHtml}
@@ -1147,7 +1202,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `flashcards_${subject}_${theme}.html`;
+            a.download = `flashcards_${customSubject}_${customTheme}.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1437,9 +1492,33 @@ Cada flashcard deve ser totalmente independente, com informações únicas.`;
         }
         
         function startFullscreenMode() {
+            // Check if a file is selected first
+            if (selectedFile && selectedFile.type === 'file') {
+                // Load single file
+                loadFlashcardsFromFile(selectedFile.file).then(cards => {
+                    if (cards.length === 0) {
+                        alert('Nenhum flashcard encontrado no arquivo selecionado');
+                        return;
+                    }
+                    
+                    fullscreenCards = cards;
+                    originalCardOrder = [...Array(fullscreenCards.length).keys()];
+                    isShuffleMode = false;
+                    currentCardIndex = 0;
+                    
+                    document.getElementById('fullscreenContainer').style.display = 'flex';
+                    document.body.style.overflow = 'hidden'; // Prevent scrolling
+                    
+                    updateFullscreenCard();
+                    updateCardProgress();
+                });
+                return;
+            }
+            
+            // Otherwise load from folder
             const currentFolder = getCurrentFolder();
             if (!currentFolder) {
-                alert('Selecione uma pasta com flashcards primeiro');
+                alert('Selecione uma pasta ou arquivo com flashcards primeiro');
                 return;
             }
             
