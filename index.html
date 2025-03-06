@@ -258,6 +258,183 @@
                 grid-template-columns: 1fr;
             }
         }
+        .file-explorer {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .file-dropzone {
+            border: 2px dashed #aaa;
+            border-radius: 6px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            transition: background-color 0.3s;
+        }
+        
+        .file-dropzone:hover, .file-dropzone.dragover {
+            background-color: #e8f4e8;
+            border-color: #4CAF50;
+        }
+        
+        .file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .file-item {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .file-item.folder {
+            font-weight: bold;
+            color: #2196F3;
+        }
+        
+        .file-item.selected {
+            background-color: #e8f4fd;
+        }
+        
+        .file-path {
+            background-color: #f5f5f5;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .path-segment {
+            cursor: pointer;
+            color: #2196F3;
+            margin: 0 5px;
+        }
+        
+        .path-segment:hover {
+            text-decoration: underline;
+        }
+        
+        .file-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        
+        .file-actions button {
+            padding: 8px 15px;
+            width: auto;
+        }
+        
+        .fullscreen-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #2c3e50;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .fullscreen-card-container {
+            width: 80%;
+            height: 70%;
+            perspective: 1000px;
+            margin-bottom: 20px;
+        }
+        
+        .fullscreen-card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+        
+        .fullscreen-card.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .fullscreen-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .fullscreen-controls button {
+            width: auto;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 16px;
+        }
+        
+        .fullscreen-exit {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #e74c3c;
+            color: white;
+            width: auto;
+            padding: 8px 15px;
+            border-radius: 50px;
+        }
+        
+        .fullscreen-exit:hover {
+            background-color: #c0392b;
+        }
+        
+        .fullscreen-progress {
+            position: absolute;
+            bottom: 20px;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .shuffle-button {
+            background-color: #9b59b6;
+        }
+        
+        .shuffle-button:hover {
+            background-color: #8e44ad;
+        }
+        
+        .order-button {
+            background-color: #3498db;
+        }
+        
+        .order-button:hover {
+            background-color: #2980b9;
+        }
     </style>
 </head>
 <body>
@@ -266,6 +443,7 @@
     <div class="tab-buttons">
         <button id="ai-tab-button" class="tab-button active" onclick="switchTab('ai')">Criar com IA</button>
         <button id="manual-tab-button" class="tab-button" onclick="switchTab('manual')">Criar Manualmente</button>
+        <button id="files-tab-button" class="tab-button" onclick="switchTab('files')">Visualizar Arquivos</button>
     </div>
     
     <div id="ai-tab-content" class="tab-content active">
@@ -319,6 +497,53 @@
         </div>
     </div>
 
+    <div id="files-tab-content" class="tab-content">
+        <div class="file-explorer">
+            <h3>Explorador de Arquivos de Flashcards</h3>
+            
+            <div class="file-dropzone" id="fileDropzone">
+                <p>Arraste e solte arquivos ou pastas aqui</p>
+                <p>ou</p>
+                <input type="file" id="fileInput" webkitdirectory directory multiple style="display: none;">
+                <button onclick="document.getElementById('fileInput').click()">Selecionar Pasta</button>
+            </div>
+            
+            <div class="file-path" id="filePath">
+                <span class="path-segment" data-path="">Raiz</span>
+            </div>
+            
+            <div class="file-list" id="fileList">
+                <p class="empty-state">Nenhum arquivo carregado</p>
+            </div>
+            
+            <div class="file-actions">
+                <button onclick="goBack()" id="backButton" disabled>Voltar</button>
+                <button onclick="loadSelectedFile()" id="loadButton" disabled>Carregar Flashcard</button>
+                <button onclick="startFullscreenMode()" id="fullscreenButton" disabled>Visualizar em Tela Cheia</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="fullscreenContainer" class="fullscreen-mode" style="display: none;">
+        <button class="fullscreen-exit" onclick="exitFullscreenMode()">Sair</button>
+        
+        <div class="fullscreen-card-container">
+            <div class="fullscreen-card" onclick="flipFullscreenCard(this)">
+                <div class="card-face card-front" id="fullscreen-front"></div>
+                <div class="card-face card-back" id="fullscreen-back"></div>
+            </div>
+        </div>
+        
+        <div class="fullscreen-controls">
+            <button onclick="prevCard()" id="prevButton">Anterior</button>
+            <button onclick="toggleShuffle()" id="shuffleButton" class="shuffle-button">Aleatório</button>
+            <button onclick="toggleOrder()" id="orderButton" class="order-button">Sequencial</button>
+            <button onclick="nextCard()" id="nextButton">Próximo</button>
+        </div>
+        
+        <div class="fullscreen-progress" id="cardProgress"></div>
+    </div>
+
     <div id="loading">
         <div class="spinner"></div>
         <p>Gerando flashcards...</p>
@@ -364,6 +589,299 @@
             if (tabName === 'manual') {
                 document.getElementById('manualCardForm').style.display = 'block';
             }
+        }
+        
+        // File system functions
+        let fileSystem = null;
+        let currentPath = [];
+        let selectedFile = null;
+        
+        // File explorer setup
+        const dropzone = document.getElementById('fileDropzone');
+        const fileInput = document.getElementById('fileInput');
+        
+        dropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.add('dragover');
+        });
+        
+        dropzone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('dragover');
+        });
+        
+        dropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('dragover');
+            
+            const items = e.dataTransfer.items;
+            if (items && items.length > 0) {
+                handleFolderSelection(items);
+            }
+        });
+        
+        fileInput.addEventListener('change', function(e) {
+            handleFileInputSelection(this.files);
+        });
+
+        function handleFileInputSelection(files) {
+            if (!files || files.length === 0) return;
+            
+            fileSystem = buildFileSystemTree(files);
+            currentPath = [];
+            updateFileList();
+        }
+        
+        function handleFolderSelection(items) {
+            // Process dropped folder structure
+            const entries = [];
+            
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        entries.push(entry);
+                    }
+                }
+            }
+            
+            if (entries.length > 0) {
+                processEntries(entries).then(files => {
+                    fileSystem = buildFileSystemTree(files);
+                    currentPath = [];
+                    updateFileList();
+                });
+            }
+        }
+        
+        function processEntries(entries) {
+            return new Promise(resolve => {
+                const files = [];
+                let pending = entries.length;
+                
+                function processEntry(entry, path = '') {
+                    if (entry.isFile) {
+                        entry.file(file => {
+                            // Add path information to file object
+                            file.relativePath = path + file.name;
+                            files.push(file);
+                            if (--pending === 0) resolve(files);
+                        });
+                    } else if (entry.isDirectory) {
+                        const dirReader = entry.createReader();
+                        const readEntries = () => {
+                            dirReader.readEntries(entries => {
+                                if (entries.length) {
+                                    pending += entries.length - 1; // -1 to account for the directory itself
+                                    entries.forEach(e => processEntry(e, path + entry.name + '/'));
+                                    readEntries(); // Continue reading if more entries exist
+                                } else {
+                                    if (--pending === 0) resolve(files);
+                                }
+                            });
+                        };
+                        readEntries();
+                    }
+                }
+                
+                entries.forEach(entry => processEntry(entry));
+            });
+        }
+        
+        function buildFileSystemTree(files) {
+            const root = { type: 'directory', name: 'root', children: {}, path: '' };
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const path = file.relativePath || file.webkitRelativePath || file.name;
+                const parts = path.split('/');
+                
+                // Skip directories themselves and non-HTML files
+                if (parts[parts.length - 1] === '' || !parts[parts.length - 1].endsWith('.html')) {
+                    continue;
+                }
+                
+                let current = root;
+                
+                // Process directory structure
+                for (let j = 0; j < parts.length - 1; j++) {
+                    const part = parts[j];
+                    if (!part) continue;
+                    
+                    if (!current.children[part]) {
+                        current.children[part] = { 
+                            type: 'directory', 
+                            name: part, 
+                            children: {},
+                            path: current.path ? current.path + '/' + part : part
+                        };
+                    }
+                    current = current.children[part];
+                }
+                
+                // Add file at the end
+                const fileName = parts[parts.length - 1];
+                current.children[fileName] = { 
+                    type: 'file', 
+                    name: fileName, 
+                    file: file,
+                    path: current.path ? current.path + '/' + fileName : fileName
+                };
+            }
+            
+            return root;
+        }
+        
+        function updateFileList() {
+            const fileListElement = document.getElementById('fileList');
+            const filePathElement = document.getElementById('filePath');
+            const backButton = document.getElementById('backButton');
+            const loadButton = document.getElementById('loadButton');
+            const fullscreenButton = document.getElementById('fullscreenButton');
+            
+            // Reset UI
+            fileListElement.innerHTML = '';
+            filePathElement.innerHTML = '<span class="path-segment" data-path="">Raiz</span>';
+            selectedFile = null;
+            loadButton.disabled = true;
+            fullscreenButton.disabled = true;
+            
+            if (!fileSystem) {
+                fileListElement.innerHTML = '<p class="empty-state">Nenhum arquivo carregado</p>';
+                backButton.disabled = true;
+                return;
+            }
+            
+            // Navigate to current path
+            let currentNode = fileSystem;
+            if (currentPath.length > 0) {
+                for (const segment of currentPath) {
+                    if (currentNode.children && currentNode.children[segment]) {
+                        currentNode = currentNode.children[segment];
+                        filePathElement.innerHTML += ` / <span class="path-segment" data-path="${currentNode.path}">${segment}</span>`;
+                    } else {
+                        // Path not found, reset to root
+                        currentPath = [];
+                        updateFileList();
+                        return;
+                    }
+                }
+            }
+            
+            // Back button logic
+            backButton.disabled = currentPath.length === 0;
+            fullscreenButton.disabled = !(currentNode && currentNode.type === 'directory');
+            
+            // Check if directory is empty
+            if (!currentNode.children || Object.keys(currentNode.children).length === 0) {
+                fileListElement.innerHTML = '<p class="empty-state">Pasta vazia</p>';
+                return;
+            }
+            
+            // Display files and folders
+            const sortedItems = Object.values(currentNode.children).sort((a, b) => {
+                if (a.type !== b.type) {
+                    return a.type === 'directory' ? -1 : 1;
+                }
+                return a.name.localeCompare(b.name);
+            });
+            
+            sortedItems.forEach(item => {
+                const listItem = document.createElement('div');
+                listItem.className = `file-item ${item.type}`;
+                listItem.innerHTML = item.name;
+                
+                if (item.type === 'directory') {
+                    listItem.addEventListener('click', () => {
+                        currentPath.push(item.name);
+                        updateFileList();
+                    });
+                } else if (item.type === 'file' && item.name.endsWith('.html')) {
+                    listItem.addEventListener('click', () => {
+                        document.querySelectorAll('.file-item').forEach(el => {
+                            el.classList.remove('selected');
+                        });
+                        listItem.classList.add('selected');
+                        selectedFile = item;
+                        loadButton.disabled = false;
+                    });
+                }
+                
+                fileListElement.appendChild(listItem);
+            });
+            
+            // Add path navigation
+            document.querySelectorAll('.path-segment').forEach(segment => {
+                segment.addEventListener('click', () => {
+                    const path = segment.getAttribute('data-path');
+                    if (path === '') {
+                        currentPath = [];
+                    } else {
+                        currentPath = path.split('/');
+                    }
+                    updateFileList();
+                });
+            });
+        }
+        
+        function goBack() {
+            if (currentPath.length > 0) {
+                currentPath.pop();
+                updateFileList();
+            }
+        }
+        
+        function loadSelectedFile() {
+            if (!selectedFile) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // Process the HTML file to extract flashcards
+                    const content = e.target.result;
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(content, 'text/html');
+                    
+                    // Extract cards from the file
+                    const extractedCards = [];
+                    const cardContainers = doc.querySelectorAll('.card-container');
+                    
+                    if (cardContainers.length > 0) {
+                        cardContainers.forEach(container => {
+                            const frontEl = container.querySelector('.card-front');
+                            const backEl = container.querySelector('.card-back');
+                            
+                            if (frontEl && backEl) {
+                                extractedCards.push({
+                                    front: frontEl.innerHTML.trim(),
+                                    back: backEl.innerHTML.trim()
+                                });
+                            }
+                        });
+                    }
+                    
+                    if (extractedCards.length > 0) {
+                        cardsData = extractedCards;
+                        renderCards();
+                        
+                        // Switch to the cards view
+                        document.getElementById('generatedCards').scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        alert('Não foi possível encontrar flashcards neste arquivo.');
+                    }
+                } catch (error) {
+                    console.error('Erro ao processar arquivo:', error);
+                    alert('Erro ao processar o arquivo: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(selectedFile.file);
         }
 
         function flipCard(cardElement) {
@@ -908,12 +1426,241 @@ Cada flashcard deve ser totalmente independente, com informações únicas.`;
             return flashcards.length > 0 ? flashcards : null;
         }
 
+        // Full-screen mode variables
+        let fullscreenCards = [];
+        let currentCardIndex = 0;
+        let isShuffleMode = false;
+        let originalCardOrder = [];
+        
+        function flipFullscreenCard(cardElement) {
+            cardElement.classList.toggle('flipped');
+        }
+        
+        function startFullscreenMode() {
+            const currentFolder = getCurrentFolder();
+            if (!currentFolder) {
+                alert('Selecione uma pasta com flashcards primeiro');
+                return;
+            }
+            
+            // Extract all HTML files in current folder and subfolders
+            fullscreenCards = [];
+            collectHtmlFiles(currentFolder).then(files => {
+                if (files.length === 0) {
+                    alert('Nenhum arquivo de flashcard encontrado na pasta selecionada');
+                    return;
+                }
+                
+                // Load all files' content
+                Promise.all(files.map(file => loadFlashcardsFromFile(file)))
+                    .then(results => {
+                        // Flatten the array of arrays and filter out nulls
+                        fullscreenCards = results.flat().filter(card => card);
+                        
+                        if (fullscreenCards.length === 0) {
+                            alert('Nenhum flashcard válido encontrado nos arquivos');
+                            return;
+                        }
+                        
+                        // Keep original order for toggling between random and sequential
+                        originalCardOrder = [...Array(fullscreenCards.length).keys()];
+                        
+                        // Start in sequential mode
+                        isShuffleMode = false;
+                        currentCardIndex = 0;
+                        
+                        // Show fullscreen mode
+                        document.getElementById('fullscreenContainer').style.display = 'flex';
+                        document.body.style.overflow = 'hidden'; // Prevent scrolling
+                        
+                        updateFullscreenCard();
+                        updateCardProgress();
+                    });
+            });
+        }
+        
+        function getCurrentFolder() {
+            if (!fileSystem) return null;
+            
+            let currentNode = fileSystem;
+            if (currentPath.length > 0) {
+                for (const segment of currentPath) {
+                    if (currentNode.children && currentNode.children[segment]) {
+                        currentNode = currentNode.children[segment];
+                    } else {
+                        return null;
+                    }
+                }
+            }
+            
+            return currentNode;
+        }
+        
+        function collectHtmlFiles(folder) {
+            return new Promise(resolve => {
+                const files = [];
+                
+                function traverseFolder(node) {
+                    if (!node.children) return;
+                    
+                    Object.values(node.children).forEach(item => {
+                        if (item.type === 'file' && item.name.endsWith('.html')) {
+                            files.push(item.file);
+                        } else if (item.type === 'directory') {
+                            traverseFolder(item);
+                        }
+                    });
+                }
+                
+                traverseFolder(folder);
+                resolve(files);
+            });
+        }
+        
+        function loadFlashcardsFromFile(file) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const content = e.target.result;
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(content, 'text/html');
+                        
+                        // Extract cards from the file
+                        const extractedCards = [];
+                        const cardContainers = doc.querySelectorAll('.card-container');
+                        
+                        if (cardContainers.length > 0) {
+                            cardContainers.forEach(container => {
+                                const frontEl = container.querySelector('.card-front');
+                                const backEl = container.querySelector('.card-back');
+                                
+                                if (frontEl && backEl) {
+                                    extractedCards.push({
+                                        front: frontEl.innerHTML.trim(),
+                                        back: backEl.innerHTML.trim()
+                                    });
+                                }
+                            });
+                        }
+                        
+                        resolve(extractedCards);
+                    } catch (error) {
+                        console.error('Erro ao processar arquivo:', error);
+                        resolve([]);
+                    }
+                };
+                
+                reader.readAsText(file);
+            });
+        }
+        
+        function updateFullscreenCard() {
+            const card = fullscreenCards[currentCardIndex];
+            if (!card) return;
+            
+            document.getElementById('fullscreen-front').innerHTML = card.front;
+            document.getElementById('fullscreen-back').innerHTML = card.back;
+            
+            // Reset card flip
+            const cardElement = document.querySelector('.fullscreen-card');
+            cardElement.classList.remove('flipped');
+        }
+        
+        function updateCardProgress() {
+            const progress = document.getElementById('cardProgress');
+            progress.textContent = `Card ${currentCardIndex + 1} de ${fullscreenCards.length}`;
+        }
+        
+        function nextCard() {
+            if (fullscreenCards.length === 0) return;
+            
+            currentCardIndex = (currentCardIndex + 1) % fullscreenCards.length;
+            updateFullscreenCard();
+            updateCardProgress();
+        }
+        
+        function prevCard() {
+            if (fullscreenCards.length === 0) return;
+            
+            currentCardIndex = (currentCardIndex - 1 + fullscreenCards.length) % fullscreenCards.length;
+            updateFullscreenCard();
+            updateCardProgress();
+        }
+        
+        function toggleShuffle() {
+            if (!isShuffleMode) {
+                // Entering shuffle mode
+                isShuffleMode = true;
+                
+                // Create a shuffled copy of original indices
+                const shuffledIndices = [...originalCardOrder];
+                for (let i = shuffledIndices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledIndices[i], shuffledIndices[j]] = [shuffledIndices[j], shuffledIndices[i]];
+                }
+                
+                // Reorder the cards
+                const tempCards = [...fullscreenCards];
+                shuffledIndices.forEach((newIndex, i) => {
+                    fullscreenCards[i] = tempCards[newIndex];
+                });
+                
+                // Reset to first card
+                currentCardIndex = 0;
+                
+                // Update UI
+                document.getElementById('shuffleButton').textContent = 'Modo Aleatório';
+                document.getElementById('shuffleButton').classList.add('active');
+                document.getElementById('orderButton').classList.remove('active');
+                
+                updateFullscreenCard();
+                updateCardProgress();
+            }
+        }
+        
+        function toggleOrder() {
+            if (isShuffleMode) {
+                // Returning to sequential mode
+                isShuffleMode = false;
+                
+                // Restore original order
+                const tempCards = [...fullscreenCards];
+                fullscreenCards = originalCardOrder.map(i => tempCards[i]);
+                
+                // Reset to first card
+                currentCardIndex = 0;
+                
+                // Update UI
+                document.getElementById('orderButton').textContent = 'Modo Sequencial';
+                document.getElementById('orderButton').classList.add('active');
+                document.getElementById('shuffleButton').classList.remove('active');
+                
+                updateFullscreenCard();
+                updateCardProgress();
+            }
+        }
+        
+        function exitFullscreenMode() {
+            document.getElementById('fullscreenContainer').style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+
         window.generateCards = generateCards;
         window.flipCard = flipCard;
         window.downloadCard = downloadCard;
         window.downloadAllCards = downloadAllCards;
         window.addManualCard = addManualCard;
         window.switchTab = switchTab;
+        window.goBack = goBack;
+        window.loadSelectedFile = loadSelectedFile;
+        window.startFullscreenMode = startFullscreenMode;
+        window.exitFullscreenMode = exitFullscreenMode;
+        window.flipFullscreenCard = flipFullscreenCard;
+        window.nextCard = nextCard;
+        window.prevCard = prevCard;
+        window.toggleShuffle = toggleShuffle;
+        window.toggleOrder = toggleOrder;
     </script>
 </body>
 </html>
